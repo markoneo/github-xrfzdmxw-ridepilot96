@@ -508,17 +508,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   async function fetchProjects() {
     try {
       console.log("Fetching projects for user:", currentUser?.id);
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', currentUser?.id)
-        .order('created_at', { ascending: false });
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) {
-        throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', currentUser?.id)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        allData = allData.concat(data || []);
+        hasMore = (data?.length ?? 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
       }
 
-      const transformedData = (data || []).map(project => ({
+      const transformedData = allData.map(project => ({
         ...project,
         company: project.company_id,
         driver: project.driver_id,
